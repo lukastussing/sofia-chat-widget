@@ -24,7 +24,6 @@
       padding: 0;
     }
 
-    /* Main block container */
     #sofia-block {
       display: flex;
       flex-direction: column;
@@ -38,7 +37,6 @@
       border: 1px solid #e8c0c0;
     }
 
-    /* Header */
     #chat-header {
       background: var(--brand);
       color: var(--white);
@@ -60,7 +58,6 @@
     #chat-header .name { font-weight: 700; font-size: 16px; }
     #chat-header .status { font-size: 12px; opacity: 0.85; margin-top: 2px; }
 
-    /* Status dot */
     .status-dot {
       display: inline-block;
       width: 7px; height: 7px;
@@ -70,7 +67,6 @@
       vertical-align: middle;
     }
 
-    /* Messages */
     #chat-messages {
       flex: 1;
       overflow-y: auto;
@@ -116,7 +112,6 @@
     }
     .msg-avatar svg { width: 18px; height: 18px; fill: var(--brand); }
 
-    /* Typing indicator */
     .typing-indicator { display: flex; gap: 4px; align-items: center; padding: 10px 14px; }
     .typing-indicator span {
       width: 7px; height: 7px;
@@ -131,7 +126,6 @@
       40% { transform: translateY(-6px); }
     }
 
-    /* Input area */
     #chat-input-area {
       display: flex;
       padding: 14px 16px;
@@ -169,7 +163,6 @@
     #chat-send svg { width: 18px; height: 18px; fill: var(--white); }
     #chat-send:disabled { background: #ccc; cursor: not-allowed; }
 
-    /* Scrollbar styling */
     #chat-messages::-webkit-scrollbar { width: 5px; }
     #chat-messages::-webkit-scrollbar-track { background: transparent; }
     #chat-messages::-webkit-scrollbar-thumb { background: #e0b0b0; border-radius: 4px; }
@@ -179,7 +172,6 @@
 
 <div id="sofia-block">
 
-  <!-- Header -->
   <div id="chat-header">
     <div class="avatar">
       <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg>
@@ -190,7 +182,6 @@
     </div>
   </div>
 
-  <!-- Messages -->
   <div id="chat-messages">
     <div class="msg bot">
       <div class="msg-avatar">
@@ -200,7 +191,6 @@
     </div>
   </div>
 
-  <!-- Input -->
   <div id="chat-input-area">
     <textarea id="chat-input" placeholder="Ask Sofia anything..." rows="1"></textarea>
     <button id="chat-send">
@@ -216,6 +206,8 @@
   const messages = document.getElementById('chat-messages');
   const input = document.getElementById('chat-input');
   const sendBtn = document.getElementById('chat-send');
+
+  let threadId = null; // stores thread across messages in same session
 
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -273,14 +265,21 @@
     addTypingIndicator();
 
     try {
+      // Send thread_id on follow-up messages so Sofia remembers the conversation
+      const payload = { message: text };
+      if (threadId) payload.thread_id = threadId;
+
       const res = await fetch(LOGIC_APP_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text })
+        body: JSON.stringify(payload)
       });
 
       const data = await res.json();
       removeTypingIndicator();
+
+      // Store thread_id returned from Logic App for next message
+      if (data.thread_id) threadId = data.thread_id;
 
       const replyText = data.text || "Sorry, I couldn't get a response. Please try again.";
       addMessage(replyText, 'bot');
